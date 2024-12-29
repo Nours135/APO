@@ -1,0 +1,13 @@
+*.json
+*.csv
+*.txt
+*.pkl
+*.joblib
+*.joblib
+*.joblib
+*.joblib
+*.joblib
+*.pyc
+utils/__pycache__/*
+utils/cached/*
+prompEval/__pycache__/*
