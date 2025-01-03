@@ -6,8 +6,10 @@
 *.joblib
 *.joblib
 *.joblib
-*.joblib
+*.joblibs
 *.pyc
+*.xlsx
+*.xls
 utils/__pycache__/*
 utils/cached/*
 prompEval/__pycache__/*

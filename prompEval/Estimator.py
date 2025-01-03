@@ -30,17 +30,20 @@ class BaseEstimator:
         self.prompt_name_2_detail_res[prompt_name]['evaluate_res'].append(evaluate_res)
         return res, evaluate_res
 
+    def load_prompt_results(self, prompt_name: str) -> Tuple[List[str], List[str], List[str], List[float]]:
+        return self.prompt_name_2_detail_res[prompt_name]['prompt'], self.prompt_name_2_detail_res[prompt_name]['res'], self.prompt_name_2_detail_res[prompt_name]['gt'], self.prompt_name_2_detail_res[prompt_name]['evaluate_res']
+    
     def _evaluate_single_task(self, task):
         X, y, prompt_name, prompt_template = task
         prompt = prompt_template(X)
-        res, evaluate_res = self.gpt_experiment(prompt, y)
-        if evaluate_res == 0:
-            # pass
+        res, evaluate_res = self.gpt_experiment(prompt, y, prompt_name)
+        # if evaluate_res == 0:
+        #     # pass
+        #     # import pdb; pdb.set_trace()
+        #     print(y)
+        #     print(res)
+        #     # print(prompt)
             # import pdb; pdb.set_trace()
-            print(y)
-            print(res)
-            # print(prompt)
-            import pdb; pdb.set_trace()
         return prompt_name, evaluate_res
 
     def evaluate_prompts(self, prompt_templates: Dict[str, Callable[[object], str]], max_workers: int = 4):
@@ -128,14 +131,14 @@ class UCBEstimator(BaseEstimator):
     def _evaluate_single_task(self, task):
         X, y, prompt_name, prompt_template = task
         prompt = prompt_template(X)
-        res, evaluate_res = self.gpt_experiment(prompt, y)
+        res, evaluate_res = self.gpt_experiment(prompt, y, prompt_name)
         if evaluate_res == 0:
             # pass
             # import pdb; pdb.set_trace()
             print(y)
             print(res)
             # print(prompt)
-            import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
         return prompt_name, evaluate_res
     
     def _task_generator(self, max_steps: int = 5) -> Generator[Tuple[object, str, str, Callable[[object], str]], None, None]:
@@ -166,7 +169,7 @@ class UCBEstimator(BaseEstimator):
         if max_workers == 1:
             for i, task in enumerate(tqdm(self._task_generator(max_steps), desc="Processing", total=max_steps)):
                 prompt_name, evaluate_res = self._evaluate_single_task(task)
-                import pdb; pdb.set_trace()
+                # import pdb; pdb.set_trace()
                 self._update(prompt_name, evaluate_res)
                 
                 if (i + 1) % 100 == 0:
@@ -222,3 +225,6 @@ class UCBEstimator(BaseEstimator):
             print(f"mean: {stats['mean']}")
             print(f"upper bound: {stats['mean'] + self.c * np.sqrt(np.log(self.total_count) / stats['count'])}")
             print("\n")
+
+    def get_best_prompt(self) -> str:
+        return max(self.prompt_stats, key=lambda x: self.prompt_stats[x]['mean'])
