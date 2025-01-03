@@ -5,6 +5,7 @@ import pickle
 import os
 import re
 import json
+from utils.debug import *
 
 # Suspension Strut and Coil Spring Assembly
 ITEM_CLASS_PATTERN = r'The following is product information about (.+?). Your task is to extract'
@@ -25,6 +26,8 @@ def load_annotated_data() -> Dict[str, int]:
             continue
         sku = row['item_number']
         if anno_label == '1' or anno_label == 1:
+            if pd.isna(row['notes_pcs']):
+                continue
             res_d[sku] = int(row['notes_pcs'])
         elif anno_label == '0' or anno_label == 0:
             truth = row['truth']
@@ -83,9 +86,9 @@ def load_sku_2_info(sku_2_pcs: Dict[str, int]) -> Dict[str, Tuple[str, str]]:
 
 
 if __name__ == '__main__':
-    # res_d = load_annotated_data()
-    with open('./temp.pkl', 'rb') as f:
-        res_d = pickle.load(f)
+    res_d = load_annotated_data()
+    # with open('./temp.pkl', 'rb') as f:
+    #     res_d = pickle.load(f)
     print(len(res_d))
     res_d_l = list(res_d.keys())
     # import pdb; pdb.set_trace()

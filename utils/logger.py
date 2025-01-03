@@ -3,13 +3,24 @@ import os
 
 if not os.path.exists('log'): os.makedirs('log')
 
-def return_logger(loggerName: str = 'info', outputFile: str = 'info.log', stream: bool = False, level: str = 'info'):
+def return_logger(loggerName: str = 'info', outputFile: str = 'info.log', stream: bool = False, level: str = 'info', overwrite: bool = False):
     '''
     return logger
+    Args:
+        loggerName: logger name
+        outputFile: output file name
+        stream: whether to output to stream
+        level: log level
+        overwrite: whether to overwrite existing log file
     '''
     logger = logging.getLogger(loggerName)
+    # Clear existing handlers if overwrite is True
+    if overwrite:
+        logger.handlers.clear()
+        
     if outputFile is not None and outputFile:
-        log_file_handler = logging.FileHandler(f'./log/{outputFile}', mode='a', delay=False)
+        mode = 'w' if overwrite else 'a'
+        log_file_handler = logging.FileHandler(f'./log/{outputFile}', mode=mode, delay=False)
         log_file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
         logger.addHandler(log_file_handler)
     if stream:

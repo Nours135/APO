@@ -28,7 +28,7 @@ def parse_sectioned_prompt(s):
 
 
 class PromptOptimizer(ABC):
-    def __init__(self, args, evaluator_fn, max_threads=1, bf_eval=None):
+    def __init__(self, args, evaluator_fn, logger, max_threads=1, bf_eval=None):
         '''
         args should contains:
             n_gradients: int, 
@@ -46,6 +46,7 @@ class PromptOptimizer(ABC):
         '''
         self.opt = args
         self.evaluator_fn = evaluator_fn
+        self.logger = logger
         # self.scorer = scorer
         self.max_threads = max_threads
         self.bf_eval = bf_eval
@@ -77,6 +78,7 @@ class ProTeGi(PromptOptimizer):
             error_string += f'Text: \'\'\'{t.strip()}\'\'\'\nLabel: \'\'\'{l}\'\'\'\nPrediction: \'\'\'{p}\'\'\'\n\n'
             error_idx += 1
         # import pdb; pdb.set_trace()
+        self.logger.info(f"error_string: {error_string}")
         return error_string.strip()
 
     def parse_tagged_text(self, text, start_tag, end_tag):
@@ -114,6 +116,7 @@ class ProTeGi(PromptOptimizer):
         new_prompts = []
         for r in res:    
             feedbacks += self.parse_tagged_text(r, "<START>", "<END>")
+            self.logger.info(f"feedbacks: {feedbacks}")
         return feedbacks
 
     def apply_gradient(self, prompt, error_str, feedback_str, steps_per_gradient, n=1):
@@ -131,6 +134,7 @@ class ProTeGi(PromptOptimizer):
 
         Based on the above information, I wrote {steps_per_gradient} different improved prompts.
         Each prompt is wrapped with <START> and <END>.
+        Make sure to keep any content wrapped by '__' as they are placeholders for instance information.
 
         The {steps_per_gradient} new prompts are:
         """
@@ -139,6 +143,7 @@ class ProTeGi(PromptOptimizer):
         new_prompts = []
         for r in res:   
             new_prompts += self.parse_tagged_text(r, "<START>", "<END>")
+            self.logger.info(f"one new_prompt: {new_prompts}")
         return new_prompts
 
     def generate_synonyms(self, prompt_section, n=3):

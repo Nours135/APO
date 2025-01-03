@@ -1,4 +1,4 @@
-from prompEval.Estimator import BaseEstimator
+from prompEval.Estimator import BaseEstimator, UCBEstimator
 
 
 

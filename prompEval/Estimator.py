@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 import concurrent.futures
 import random
 from copy import deepcopy
+import json
 
 
 class BaseEstimator:
@@ -50,6 +51,8 @@ class BaseEstimator:
         '''
         prompt_templates: a dict of prompt templates, the key is the prompt template name, the value is a function that takes a obnject (X) and returns a prompt template
         '''
+        self.prompt_name_2_detail_res = dict()
+
         tasks = []
         for X, y in self.test_dataset:
             for prompt_name, prompt_template in prompt_templates.items():
@@ -93,7 +96,14 @@ class BaseEstimator:
 
 
 class UCBEstimator(BaseEstimator):
-    def __init__(self, test_dataset: Tuple[object, str], estimate_func: Callable[[str, str], float], gpt_func: Callable[[str], str], c: float = 1.0):
+    def __init__(self, test_dataset: Tuple[object, str], estimate_func: Callable[[str, str], float], gpt_func: Callable[[str], str], c: float = 1.0, tolerance: float = 0.001):
+        '''
+        test_dataset: 测试数据集
+        estimate_func: 评估gpt_res and gt 的函数
+        gpt_func: gpt 调用函数
+        c: 探索参数，用于 UCB
+        tolerance: 收敛条件，当最近 100 次 update 的平均 diff 小于 tolerance 时，认为收敛
+        '''
         super().__init__(test_dataset, estimate_func, gpt_func)
         self.c = c  # Exploration parameter for UCB
         self.prompt_stats = defaultdict(lambda: {"mean": 0, "count": 0})
@@ -102,8 +112,8 @@ class UCBEstimator(BaseEstimator):
 
         # 收敛条件
         # self.previous_means = {name: 0 for name in self.prompt_stats.keys()}
-        self.tolerance = 0.005  #
-        self.update_diff = deque(maxlen=40)  # Only store last maxlen updates
+        self.tolerance = tolerance  #
+        self.update_diff = deque(maxlen=100)  # Only store last maxlen updates
 
         
 
@@ -133,10 +143,10 @@ class UCBEstimator(BaseEstimator):
         prompt = prompt_template(X)
         res, evaluate_res = self.gpt_experiment(prompt, y, prompt_name)
         if evaluate_res == 0:
-            # pass
+            pass
             # import pdb; pdb.set_trace()
-            print(y)
-            print(res)
+            # print(y)
+            # print(res)
             # print(prompt)
             # import pdb; pdb.set_trace()
         return prompt_name, evaluate_res
@@ -166,15 +176,17 @@ class UCBEstimator(BaseEstimator):
             self.add_prompt(prompt_name, one_peompt_template)
 
     def evaluate_prompts(self, max_workers: int = 4, max_steps: int = 500):
+        self.prompt_name_2_detail_res = dict()  # clear out the old results
+
         if max_workers == 1:
             for i, task in enumerate(tqdm(self._task_generator(max_steps), desc="Processing", total=max_steps)):
                 prompt_name, evaluate_res = self._evaluate_single_task(task)
                 # import pdb; pdb.set_trace()
                 self._update(prompt_name, evaluate_res)
                 
-                if (i + 1) % 100 == 0:
-                    print(f"Step: {i + 1}")
-                    self.read_out()
+                # if (i + 1) % 100 == 0:
+                #     print(f"Step: {i + 1}")
+                #     self.read_out()
         else:
             batch_size = 40
             task_generator = self._task_generator(max_steps)
@@ -205,8 +217,7 @@ class UCBEstimator(BaseEstimator):
                     
                     batch_count += 1
                     # print(f"Completed batch {batch_count}")
-                    self.read_out()
-                    
+        
                     # 在这里添加你的终止条件判断
                     # 例如：判断均值是否收敛
                     if self._check_convergence():  # 你需要实现这个方法
@@ -217,14 +228,20 @@ class UCBEstimator(BaseEstimator):
 
 
 
-    def read_out(self):
+    def read_out(self, logger):
         '''打印count，mean，upper bound'''
         for prompt_name, stats in self.prompt_stats.items():
-            print(f"Prompt: {prompt_name}")
-            print(f"count: {stats['count']}")
-            print(f"mean: {stats['mean']}")
-            print(f"upper bound: {stats['mean'] + self.c * np.sqrt(np.log(self.total_count) / stats['count'])}")
-            print("\n")
+            logger.info(f"Prompt: {prompt_name}, prompt_template: {str(self.prompt_templates[prompt_name])}\n"
+                       f"explore count: {stats['count']}\n"
+                       f"mean: {stats['mean']}\n" 
+                       f"upper bound: {stats['mean'] + self.c * np.sqrt(np.log(self.total_count) / stats['count'])}\n\n")
+        # log best
+        best_prompt_name = self.get_best_prompt()
+        logger.info(f"Best prompt: {best_prompt_name}, prompt_template: {str(self.prompt_templates[best_prompt_name])}\n"
+                       f"explore count: {self.prompt_stats[best_prompt_name]['count']}\n"
+                       f"mean: {self.prompt_stats[best_prompt_name]['mean']}\n" 
+                       f"upper bound: {self.prompt_stats[best_prompt_name]['mean'] + self.c * np.sqrt(np.log(self.total_count) / self.prompt_stats[best_prompt_name]['count'])}\n\n")
+        logger.info(json.dumps(self.prompt_stats, indent=4))
 
     def get_best_prompt(self) -> str:
         return max(self.prompt_stats, key=lambda x: self.prompt_stats[x]['mean'])

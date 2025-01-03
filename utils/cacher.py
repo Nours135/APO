@@ -62,7 +62,7 @@ class CacheDecorator(Cacher):
             hash_key = f'{hashlib.md5(str(args).encode() + str(kwargs).encode()).hexdigest()}'  # 32 位的 key
             cache_key = f"{func.__name__}_{hash_key}"
             sub_file = f'{hash_key[:3]}.pickle'  
-            
+
             if 'reload' not in kwargs or kwargs['reload'] == False:  # allow reload                
                 # Use the first 3 characters， 这样可以把存储的文件限制在几千个（16**3），如果是4 一下子又上万了 
                 # TODO 这样会无法处理多进程内的冲突了，不过进程不安全的结果只是丢失cache，可以接受
@@ -76,11 +76,12 @@ class CacheDecorator(Cacher):
                         if cache_key in cached_d:
                             res = cached_d[cache_key]['result']
                             if not check_nonsence(res):
-                                print(f'load cached results from {cache_file}')
+                                # print(f'load cached results from {cache_file}')
                                 # print(f'Loaded result from cache file: {cache_file}')
                                 return res
                             else:
-                                print('loaded result is nonsence, reload')
+                                # print('loaded result is nonsence, reload')
+                                pass
                                 
             # Call the original function
             if 'reload' in kwargs:
