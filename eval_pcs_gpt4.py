@@ -7,7 +7,7 @@ from tqdm import tqdm
 from utils.chatgpt_package import chatgpt_api
 from prompEval.Estimator import BaseEstimator, UCBEstimator
 from gradient import ProTeGi
-from PromptTemplates.prompt_templates_pcs import prompt_template_cot, prompt_template_noncot, PromptTemplate_pcs
+from PromptTemplates.prompt_templates_pcs import prompt_template_cot, prompt_template_noncot, prompt_template_opti_res, PromptTemplate_pcs
 
 from utils.debug import *
 from utils.logger import return_logger
@@ -100,11 +100,13 @@ def main_run_exp():
     gpt_func = partial(chatgpt_api, model_assign='gpt-4', base='self')
     test_data = load_test_dataset_anno()
     # classes = set([item['item_class'] for item, gt in test_data])
+    # print(len(test_data))
     # import pdb; pdb.set_trace()
     
     prompt_templates = {
         'prompt_template_cot': prompt_template_cot,
-        'prompt_template_noncot': prompt_template_noncot
+        'prompt_template_noncot': prompt_template_noncot,
+        'prompt_template_opti_res': prompt_template_opti_res
     }
 
     args = {
@@ -124,7 +126,7 @@ def main_run_exp():
         estimator.read_out(scores_logger)
         best_prompt_name = estimator.get_best_prompt()
         best_prompt_template = str(estimator.prompt_templates[best_prompt_name])
-        best_prompt, best_res, best_gt, best_evaluate_res = estimator.load_prompt_results(best_prompt_name)
+        best_prompt, best_res, best_gt = estimator.load_prompt_results(best_prompt_name)
         gradients = optimizer.get_gradients(best_prompt_template, best_prompt, best_gt, best_res)    # 得到 gradiant
         # import pdb; pdb.set_trace()
         new_task_sections = []

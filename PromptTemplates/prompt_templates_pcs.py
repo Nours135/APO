@@ -55,5 +55,20 @@ template_noncot = (
             "Directly output the result in the format 'Number of Products|xxx,' including only the number. "
             "For example: 'Number of Products|2'."
         )
+
+templated_opti_res = '''Your task is to determine the total quantity of items in the given product information regarding __item_class__. Carefully analyze both explicit numerical mentions and implied quantities based on context and common practices.
+
+Guidelines:
+1. Directly use any explicitly stated quantity.
+2. Add quantities from breakdown components if listed.
+3. If commonly sold as a single unit and no number is mentioned, assume 1.
+4. Assign a common default quantity for items usually sold in pairs or sets when no explicit number is present (e.g., 2 for pairs).
+5. If unsure or data is ambiguous, indicate 'unclear'.
+
+Now review this product description and title: __info_str__.
+
+Conclude by stating 'Number of Products|xxx', where 'xxx' represents the total identified quantity.'''
+
 prompt_template_cot = PromptTemplate_pcs(template_cot)
 prompt_template_noncot = PromptTemplate_pcs(template_noncot)
+prompt_template_opti_res = PromptTemplate_pcs(templated_opti_res)
