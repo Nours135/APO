@@ -24,7 +24,7 @@ def load_annotated_data() -> Dict[str, int]:
         # import pdb; pdb.set_trace()
         if pd.isna(anno_label):
             continue
-        sku = row['item_number']
+        sku = str(row['item_number'])
         if anno_label == '1' or anno_label == 1:
             if pd.isna(row['notes_pcs']):
                 continue
@@ -42,7 +42,7 @@ def load_annotated_data() -> Dict[str, int]:
         # import pdb; pdb.set_trace()
         if pd.isna(anno_label):
             continue
-        sku = row['item_number']
+        sku = str(row['item_number'])
         if anno_label == '1' or anno_label == 1:
             res_d[sku] = int(row['notes_pcs'])
         elif anno_label == '0' or anno_label == 0:
@@ -51,6 +51,27 @@ def load_annotated_data() -> Dict[str, int]:
                 res_d[sku] = int(truth)
         else:
             pass
+
+    
+    # print(len(res_d))
+    # import pdb; pdb.set_trace()  # DEBUG count
+    df_3 = pd.read_excel('./data/others_pcs_0103.xlsx', sheet_name='gpt4_res')
+    for idx, row in tqdm(df_3.iterrows(), total=len(df_3)):
+        anno_label = row['rightness']
+        # import pdb; pdb.set_trace()
+        if pd.isna(anno_label):
+            continue
+        sku = str(row['sku_id'])
+        if anno_label == '1' or anno_label == 1:
+            res_d[sku] = int(row['parsed_output'])
+        elif anno_label == '0' or anno_label == 0:
+            truth = row['truth']
+            if not pd.isna(truth) and (isinstance(truth, int) or isinstance(truth, float) or (isinstance(truth, str) and truth.isdigit())):
+                res_d[sku] = int(truth)
+        else:
+            pass
+
+    print(len(res_d))
 
     return res_d
 
@@ -64,7 +85,7 @@ def load_sku_2_info(sku_2_pcs: Dict[str, int]) -> Dict[str, Tuple[str, str]]:
     df = pd.read_csv('./data/减震器总成_pcs_all.csv', header=0)
     # import pdb; pdb.set_trace()
     for idx, row in tqdm(df.iterrows(), total=len(df)):
-        sku = row['sku_id']
+        sku = str(row['sku_id'])
         if sku in skus:
             prompt = row['prompt']
             # import pdb; pdb.set_trace()
@@ -82,6 +103,26 @@ def load_sku_2_info(sku_2_pcs: Dict[str, int]) -> Dict[str, Tuple[str, str]]:
             res_d[sku] = (item_class, item_info, sku_2_pcs[sku])
 
         # import pdb; pdb.set_trace()
+    
+    df_3 = pd.read_excel('./data/others_pcs_0103.xlsx', sheet_name='gpt4_res')
+    for idx, row in tqdm(df_3.iterrows(), total=len(df_3)):
+        sku = str(row['sku_id'])
+        if sku in skus:
+            prompt = row['processed_prompt']
+            item_class_match = re.findall(ITEM_CLASS_PATTERN, prompt)
+            if item_class_match:
+                item_class = item_class_match[0]
+            else:
+                item_class = 'unknown'
+            item_info_match = re.findall(ITEM_INFOMATION_PATTERN, prompt, re.DOTALL)
+            if item_info_match:
+                item_info = item_info_match[0]
+            else:
+                item_info = 'unknown'
+            # import pdb; pdb.set_trace()
+            res_d[sku] = (item_class, item_info, sku_2_pcs[sku])
+
+
     return res_d
 
 
@@ -89,12 +130,15 @@ if __name__ == '__main__':
     res_d = load_annotated_data()
     # with open('./temp.pkl', 'rb') as f:
     #     res_d = pickle.load(f)
+    # import pdb; pdb.set_trace()
     print(len(res_d))
     res_d_l = list(res_d.keys())
     # import pdb; pdb.set_trace()
     res_info_d = load_sku_2_info(res_d)
     res_info_d_l = list(res_info_d.keys())
     print(len(res_info_d))
+    import pdb; pdb.set_trace()
+    
     print(res_info_d[res_info_d_l[0]])
     with open('./data/pcs_info.json', 'w') as f:
         json.dump(res_info_d, f, indent=4)
