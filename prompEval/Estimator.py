@@ -10,7 +10,7 @@ import json
 
 
 class BaseEstimator:
-    def __init__(self, test_dataset: Tuple[object, str], estimate_func: Callable[[str, str], float], gpt_func: Callable[[str], str]):
+    def __init__(self, test_dataset: List[Tuple[object, str]], estimate_func: Callable[[str, str], float], gpt_func: Callable[[str], str]):
         self.test_dataset = test_dataset
         self.estimate_func = estimate_func
         self.gpt_func = gpt_func
@@ -22,17 +22,22 @@ class BaseEstimator:
         res = self.gpt_func(prompt)
         evaluate_res = self.estimate_func(res, gt)
         if prompt_name not in self.prompt_name_2_detail_res:
-            self.prompt_name_2_detail_res[prompt_name] = {
-                'prompt': [], 'res': [], 'gt': [], 'evaluate_res': []
-            }
-        self.prompt_name_2_detail_res[prompt_name]['prompt'].append(prompt)
-        self.prompt_name_2_detail_res[prompt_name]['res'].append(res)
-        self.prompt_name_2_detail_res[prompt_name]['gt'].append(gt)
-        self.prompt_name_2_detail_res[prompt_name]['evaluate_res'].append(evaluate_res)
+            self.prompt_name_2_detail_res[prompt_name] = dict()
+        self.prompt_name_2_detail_res[prompt_name][prompt] = {
+            'gt': gt,
+            'res': res,
+        }
+        # self.prompt_name_2_detail_res[prompt_name]['evaluate_res'].append(evaluate_res)
         return res, evaluate_res
 
     def load_prompt_results(self, prompt_name: str) -> Tuple[List[str], List[str], List[str], List[float]]:
-        return self.prompt_name_2_detail_res[prompt_name]['prompt'], self.prompt_name_2_detail_res[prompt_name]['res'], self.prompt_name_2_detail_res[prompt_name]['gt'], self.prompt_name_2_detail_res[prompt_name]['evaluate_res']
+        output_prompt, output_res, output_gt, output_evaluate_res = [], [], [], []
+        for prompt, detail in self.prompt_name_2_detail_res[prompt_name].items():
+            output_prompt.append(prompt)
+            output_res.append(detail['res'])
+            output_gt.append(detail['gt'])
+            # output_evaluate_res.append(detail['evaluate_res'])
+        return output_prompt, output_res, output_gt # , output_evaluate_res
     
     def _evaluate_single_task(self, task):
         X, y, prompt_name, prompt_template = task
@@ -51,7 +56,6 @@ class BaseEstimator:
         '''
         prompt_templates: a dict of prompt templates, the key is the prompt template name, the value is a function that takes a obnject (X) and returns a prompt template
         '''
-        self.prompt_name_2_detail_res = dict()
 
         tasks = []
         for X, y in self.test_dataset:
@@ -96,7 +100,7 @@ class BaseEstimator:
 
 
 class UCBEstimator(BaseEstimator):
-    def __init__(self, test_dataset: Tuple[object, str], estimate_func: Callable[[str, str], float], gpt_func: Callable[[str], str], c: float = 1.0, tolerance: float = 0.001):
+    def __init__(self, test_dataset: Tuple[object, str], estimate_func: Callable[[str, str], float], gpt_func: Callable[[str], str], c: float = 1.0, tolerance: float = 0.0005):
         '''
         test_dataset: 测试数据集
         estimate_func: 评估gpt_res and gt 的函数
@@ -176,8 +180,6 @@ class UCBEstimator(BaseEstimator):
             self.add_prompt(prompt_name, one_peompt_template)
 
     def evaluate_prompts(self, max_workers: int = 4, max_steps: int = 500):
-        self.prompt_name_2_detail_res = dict()  # clear out the old results
-
         if max_workers == 1:
             for i, task in enumerate(tqdm(self._task_generator(max_steps), desc="Processing", total=max_steps)):
                 prompt_name, evaluate_res = self._evaluate_single_task(task)
@@ -188,7 +190,7 @@ class UCBEstimator(BaseEstimator):
                 #     print(f"Step: {i + 1}")
                 #     self.read_out()
         else:
-            batch_size = 40
+            batch_size = 10   # 突然发现这个 得更小一点
             task_generator = self._task_generator(max_steps)
             tasks = []
             batch_count = 0
