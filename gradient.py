@@ -62,7 +62,8 @@ class ProTeGi(PromptOptimizer):
         """ Sample n error strings from the given texts, labels, and preds"""
         error_idxs = []
         for i, (l, p) in enumerate(zip(labels, preds)):
-            if self.evaluator_fn(l, p) == 0:
+            # 在我的框架内，有些评估函数的返回值是 0 - 1 的浮点数，0表示极端的错误，在很多时候是因为数据缺失，导致没有价值！ 
+            if self.evaluator_fn(l, p) < 0.5:  
                 error_idxs.append(i)
 
         sample_idxs = random.sample(error_idxs, min(len(error_idxs), n))
@@ -111,7 +112,7 @@ class ProTeGi(PromptOptimizer):
         Wrap each reason with <START> and <END>
         """
         gradient_prompt = '\n'.join([line.lstrip() for line in gradient_prompt.split('\n')])
-        res = [chatgpt_api(gradient_prompt, model_assign='gpt-4', reload=True) for i in range(n)]
+        res = [chatgpt_api(gradient_prompt, model_assign='gpt-4') for i in range(n)]   # , reload=True 这个开发的有点问题，然后需要 reload 的情况很少
         feedbacks = []
         new_prompts = []
         for r in res:    
@@ -139,7 +140,7 @@ class ProTeGi(PromptOptimizer):
         The {steps_per_gradient} new prompts are:
         """
         transformation_prompt = '\n'.join([line.lstrip() for line in transformation_prompt.split('\n')])
-        res = [chatgpt_api(transformation_prompt, model_assign='gpt-4', reload=True) for i in range(n)]
+        res = [chatgpt_api(transformation_prompt, model_assign='gpt-4') for i in range(n)]  # , reload=True
         new_prompts = []
         for r in res:   
             new_prompts += self.parse_tagged_text(r, "<START>", "<END>")

@@ -20,7 +20,7 @@ class BaseEstimator:
 
     def gpt_experiment(self, prompt: str, gt: str, prompt_name: str):
         res = self.gpt_func(prompt)
-        evaluate_res = self.estimate_func(res, gt)
+        evaluate_res = self.estimate_func(gt, res)
         if prompt_name not in self.prompt_name_2_detail_res:
             self.prompt_name_2_detail_res[prompt_name] = dict()
         self.prompt_name_2_detail_res[prompt_name][prompt] = {
@@ -243,7 +243,14 @@ class UCBEstimator(BaseEstimator):
                        f"explore count: {self.prompt_stats[best_prompt_name]['count']}\n"
                        f"mean: {self.prompt_stats[best_prompt_name]['mean']}\n" 
                        f"upper bound: {self.prompt_stats[best_prompt_name]['mean'] + self.c * np.sqrt(np.log(self.total_count) / self.prompt_stats[best_prompt_name]['count'])}\n\n")
-        logger.info(json.dumps(self.prompt_stats, indent=4))
+        logger.info('prompt_stats: ' + json.dumps(self.prompt_stats, indent=4))
 
     def get_best_prompt(self) -> str:
-        return max(self.prompt_stats, key=lambda x: self.prompt_stats[x]['mean'])
+        '''
+        70 % 概率 top 1
+        30 % 概率 top 2
+        '''
+        if random.random() < 0.7:
+            return max(self.prompt_stats, key=lambda x: self.prompt_stats[x]['mean'])
+        else:
+            return sorted(self.prompt_stats, key=lambda x: self.prompt_stats[x]['mean'], reverse=True)[1]

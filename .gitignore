@@ -14,3 +14,4 @@
 utils/__pycache__/*
 utils/cached/*
 prompEval/__pycache__/*
+.ipynb_checkpoints/*
